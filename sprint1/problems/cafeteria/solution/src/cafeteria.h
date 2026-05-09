@@ -37,6 +37,7 @@ public:
 
             bool sausage_ready = false;
             bool bread_ready = false;
+            bool done = false;
         };
 
         auto state = std::make_shared<State>();
@@ -47,10 +48,15 @@ public:
         // Проверяем: готовы ли оба ингредиента
         auto check_ready = [this, state, handler]() {
 
+            if (state->done) {
+                return;
+            }
+
             if (state->sausage_ready && state->bread_ready) {
 
-                try {
+                state->done = true;
 
+                try {
                     HotDog hotdog(
                         ++next_hotdog_id_,
                         state->sausage,
@@ -59,7 +65,6 @@ public:
                     handler(Result<HotDog>(std::move(hotdog)));
                 }
                 catch (...) {
-
                     handler(Result<HotDog>::FromCurrentException());
                 }
             }
