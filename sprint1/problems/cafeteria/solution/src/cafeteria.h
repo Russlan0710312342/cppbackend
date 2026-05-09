@@ -1,7 +1,4 @@
-// cafeteria.h
-
 #pragma once
-
 #ifdef _WIN32
 #include <sdkddkver.h>
 #endif
@@ -9,17 +6,16 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
-
 #include <memory>
 
 #include "hotdog.h"
 #include "result.h"
 
 namespace net = boost::asio;
-namespace sys = boost::system;
 
-// Функция-обработчик
+// Функция-обработчик операции приготовления хот-дога
 using HotDogHandler = std::function<void(Result<HotDog> hot_dog)>;
+
 
 class Cafeteria {
 public:
