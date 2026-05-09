@@ -54,7 +54,8 @@ public:
                     HotDog hotdog(
                         ++next_hotdog_id_,
                         state->sausage,
-                        state->bread);
+                        state->bread
+                        );
 
                     handler(Result<HotDog>(std::move(hotdog)));
                 }
@@ -64,21 +65,21 @@ public:
             }
         };
 
-		sausage->StartFry(*gas_cooker_, [sausage, state, try_finish]() {
+        sausage->StartFry(*gas_cooker_, [sausage, state, check_ready]() {
 
-			sausage->StopFry();   // 🔥 важно: сначала завершение
+            sausage->StopFry();
 
-			state->sausage_ready = true;
-			try_finish();
-		});
+            state->sausage_ready = true;
+            check_ready();
+        });
 
-		bread->StartBake(*gas_cooker_, [bread, state, try_finish]() {
+        bread->StartBake(*gas_cooker_, [bread, state, check_ready]() {
 
-			bread->StopBaking();  // 🔥 аналогично
+            bread->StopBaking();
 
-			state->bread_ready = true;
-			try_finish();
-		});
+            state->bread_ready = true;
+            check_ready();
+        });
     }
 
 private:
