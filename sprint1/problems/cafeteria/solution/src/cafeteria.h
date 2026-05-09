@@ -32,8 +32,8 @@ public:
         struct State {
             std::shared_ptr<Sausage> sausage;
             std::shared_ptr<Bread> bread;
-            std::atomic_bool sausage_ready{false};
-            std::atomic_bool bread_ready{false};
+            bool sausage_ready = false;
+            bool bread_ready = false;
         };
 
         auto state = std::make_shared<State>();
@@ -41,9 +41,11 @@ public:
         state->bread = bread;
 
         auto try_finish = [this, state, handler]() {
-            if (state->sausage_ready.load() && state->bread_ready.load()) {
+            if (state->sausage_ready && state->bread_ready) {
                 try {
-                    HotDog hotdog(++next_hotdog_id_, state->sausage, state->bread);
+                    HotDog hotdog(++next_hotdog_id_,
+                                  state->sausage,
+                                  state->bread);
                     handler(Result<HotDog>(std::move(hotdog)));
                 } catch (...) {
                     handler(Result<HotDog>::FromCurrentException());
@@ -51,44 +53,23 @@ public:
             }
         };
 
-        gas_cooker_->UseBurner([this, sausage, state, try_finish]() {
-            sausage->StartFry(*gas_cooker_, [this, sausage, state, try_finish]() {
-
-                auto timer = std::make_shared<net::steady_timer>(
-                    io_, HotDog::MIN_SAUSAGE_COOK_DURATION);
-
-                timer->async_wait([this, sausage, state, try_finish, timer](sys::error_code ec) {
-                    if (ec) return;
-
-                    sausage->StopFry();
-
-                    gas_cooker_->ReleaseBurner();
-
-                    state->sausage_ready = true;
-                    try_finish();
-                });
-            });
+        // СОСИСКА
+        sausage->StartFry(*gas_cooker_, [this, sausage, state, try_finish]() {
+            state->sausage_ready = true;
+            sausage->StopFry();
+            gas_cooker_->ReleaseBurner();
+            try_finish();
         });
 
-        gas_cooker_->UseBurner([this, bread, state, try_finish]() {
-            bread->StartBake(*gas_cooker_, [this, bread, state, try_finish]() {
-
-                auto timer = std::make_shared<net::steady_timer>(
-                    io_, HotDog::MIN_BREAD_COOK_DURATION);
-
-                timer->async_wait([this, bread, state, try_finish, timer](sys::error_code ec) {
-                    if (ec) return;
-
-                    bread->StopBaking();
-
-                    gas_cooker_->ReleaseBurner();
-
-                    state->bread_ready = true;
-                    try_finish();
-                });
-            });
+        // ХЛЕБ
+        bread->StartBake(*gas_cooker_, [this, bread, state, try_finish]() {
+            state->bread_ready = true;
+            bread->StopBaking();
+            gas_cooker_->ReleaseBurner();
+            try_finish();
         });
     }
+
 private:
     net::io_context& io_;
 
