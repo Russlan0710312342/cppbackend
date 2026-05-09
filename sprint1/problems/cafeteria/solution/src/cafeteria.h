@@ -1,93 +1,62 @@
-#pragma once
+void OrderHotDog(HotDogHandler handler) {
 
-#ifdef _WIN32
-#include <sdkddkver.h>
-#endif
+    auto sausage = store_.GetSausage();
+    auto bread = store_.GetBread();
 
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/strand.hpp>
+    struct State {
+        std::shared_ptr<Sausage> sausage;
+        std::shared_ptr<Bread> bread;
 
-#include <memory>
-#include <atomic>
+        bool sausage_ready = false;
+        bool bread_ready = false;
+        bool done = false;
+    };
 
-#include "hotdog.h"
-#include "result.h"
+    auto state = std::make_shared<State>();
+    state->sausage = sausage;
+    state->bread = bread;
 
-namespace net = boost::asio;
-namespace sys = boost::system;
+    auto check_ready = [this, state, handler]() {
 
-using HotDogHandler = std::function<void(Result<HotDog> hot_dog)>;
+        if (state->done) return;
 
-class Cafeteria {
-public:
-    explicit Cafeteria(net::io_context& io)
-        : io_{io},
-        gas_cooker_(std::make_shared<GasCooker>(io_)) {
-    }
+        if (state->sausage_ready && state->bread_ready) {
+            state->done = true;
 
-    void OrderHotDog(HotDogHandler handler) {
+            try {
+                HotDog hotdog(
+                    ++next_hotdog_id_,
+                    state->sausage,
+                    state->bread
+                    );
 
-        auto sausage = store_.GetSausage();
-        auto bread = store_.GetBread();
-
-        struct State {
-            std::shared_ptr<Sausage> sausage;
-            std::shared_ptr<Bread> bread;
-
-            bool sausage_ready = false;
-            bool bread_ready = false;
-            bool done = false;
-        };
-
-        auto state = std::make_shared<State>();
-        state->sausage = sausage;
-        state->bread = bread;
-
-        auto check_ready = [this, state, handler]() {
-
-            if (state->done) return;
-
-            if (state->sausage_ready && state->bread_ready) {
-                state->done = true;
-
-                try {
-                    HotDog hotdog(
-                        ++next_hotdog_id_,
-                        state->sausage,
-                        state->bread
-                        );
-
-                    handler(Result<HotDog>(std::move(hotdog)));
-                }
-                catch (...) {
-                    handler(Result<HotDog>::FromCurrentException());
-                }
+                handler(Result<HotDog>(std::move(hotdog)));
             }
-        };
+            catch (...) {
+                handler(Result<HotDog>::FromCurrentException());
+            }
+        }
+    };
 
-        sausage->StartFry(*gas_cooker_, [sausage, state, check_ready]() {
+    // 🍖 сосиска
+    sausage->StartFry(*gas_cooker_,
+                      [sausage, state, check_ready]() {
 
-            sausage->StopFry();
+                          sausage->StopFry();   // фиксируем время
 
-            state->sausage_ready = true;
-            check_ready();
-        });
+                          state->sausage_ready = true;
+                          check_ready();
+                      }
+                      );
 
-        bread->StartBake(*gas_cooker_, [bread, state, check_ready]() {
+    // 🥖 хлеб
+    bread->StartBake(*gas_cooker_,
+                     [bread, state, check_ready]() {
 
-            bread->StopBaking();
+                         bread->StopBaking();  // фиксируем время
 
-            state->bread_ready = true;
-            check_ready();
-        });
-    }
-
-private:
-    net::io_context& io_;
-
-    Store store_;
-
-    std::shared_ptr<GasCooker> gas_cooker_;
-
-    std::atomic_int next_hotdog_id_ = 0;
-};
+                         state->bread_ready = true;
+                         check_ready();
+                     }
+                     );
+}
