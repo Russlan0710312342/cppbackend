@@ -44,7 +44,7 @@ public:
         state->bread = bread;
 
         // Проверяем: готовы ли оба ингредиента
-        auto check_ready = [state, handler]() {
+        auto check_ready = [this, state, handler]() {
 
             if (state->sausage_ready && state->bread_ready) {
 
