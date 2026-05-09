@@ -1,36 +1,35 @@
 #pragma once
+
 #ifdef _WIN32
 #include <sdkddkver.h>
 #endif
 
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
+
 #include <memory>
+#include <atomic>
 
 #include "hotdog.h"
 #include "result.h"
-#include <atomic>
 
 namespace net = boost::asio;
+namespace sys = boost::system;
 
-// Функция-обработчик операции приготовления хот-дога
 using HotDogHandler = std::function<void(Result<HotDog> hot_dog)>;
-
 
 class Cafeteria {
 public:
     explicit Cafeteria(net::io_context& io)
-        : io_{io} {
+        : io_{io},
+        gas_cooker_(std::make_shared<GasCooker>(io_)) {
     }
 
-    // Асинхронное приготовление хот-дога
     void OrderHotDog(HotDogHandler handler) {
 
         auto sausage = store_.GetSausage();
         auto bread = store_.GetBread();
 
-        // Состояние заказа
         struct State {
             std::shared_ptr<Sausage> sausage;
             std::shared_ptr<Bread> bread;
@@ -41,19 +40,14 @@ public:
         };
 
         auto state = std::make_shared<State>();
-
         state->sausage = sausage;
         state->bread = bread;
 
-        // Проверяем: готовы ли оба ингредиента
         auto check_ready = [this, state, handler]() {
 
-            if (state->done) {
-                return;
-            }
+            if (state->done) return;
 
             if (state->sausage_ready && state->bread_ready) {
-
                 state->done = true;
 
                 try {
@@ -70,59 +64,31 @@ public:
             }
         };
 
-        // Готовим сосиску
         sausage->StartFry(
             *gas_cooker_,
-            [this, sausage, state, check_ready]() {
+            [sausage, state, check_ready]() {
 
-                auto timer = std::make_shared<net::steady_timer>(
-                    io_,
-                    HotDog::MIN_SAUSAGE_COOK_DURATION);
-
-                timer->async_wait(
-                    [sausage, state, check_ready, timer](sys::error_code ec) {
-
-                        if (ec) {
-                            return;
-                        }
-
-                        sausage->StopFry();
-
-                        state->sausage_ready = true;
-
-                        check_ready();
-                    });
+                sausage->StopFry();
+                state->sausage_ready = true;
+                check_ready();
             });
 
-        // Готовим хлеб
         bread->StartBake(
             *gas_cooker_,
-            [this, bread, state, check_ready]() {
+            [bread, state, check_ready]() {
 
-                auto timer = std::make_shared<net::steady_timer>(
-                    io_,
-                    HotDog::MIN_BREAD_COOK_DURATION);
-
-                timer->async_wait(
-                    [bread, state, check_ready, timer](sys::error_code ec) {
-
-                        if (ec) {
-                            return;
-                        }
-
-                        bread->StopBaking();
-
-                        state->bread_ready = true;
-
-                        check_ready();
-                    });
+                bread->StopBaking();
+                state->bread_ready = true;
+                check_ready();
             });
     }
 
 private:
     net::io_context& io_;
-    std::atomic_int next_hotdog_id_ = 0;
+
     Store store_;
 
-    std::shared_ptr<GasCooker> gas_cooker_ = std::make_shared<GasCooker>(io_);
+    std::shared_ptr<GasCooker> gas_cooker_;
+
+    std::atomic_int next_hotdog_id_ = 0;
 };
