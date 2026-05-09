@@ -64,23 +64,21 @@ public:
             }
         };
 
-        sausage->StartFry(
-            *gas_cooker_,
-            [sausage, state, check_ready]() {
+		sausage->StartFry(*gas_cooker_, [sausage, state, try_finish]() {
 
-                sausage->StopFry();
-                state->sausage_ready = true;
-                check_ready();
-            });
+			sausage->StopFry();   // 🔥 важно: сначала завершение
 
-        bread->StartBake(
-            *gas_cooker_,
-            [bread, state, check_ready]() {
+			state->sausage_ready = true;
+			try_finish();
+		});
 
-                bread->StopBaking();
-                state->bread_ready = true;
-                check_ready();
-            });
+		bread->StartBake(*gas_cooker_, [bread, state, try_finish]() {
+
+			bread->StopBaking();  // 🔥 аналогично
+
+			state->bread_ready = true;
+			try_finish();
+		});
     }
 
 private:
