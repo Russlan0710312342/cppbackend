@@ -10,6 +10,7 @@
 
 #include "hotdog.h"
 #include "result.h"
+#include <atomic>
 
 namespace net = boost::asio;
 
