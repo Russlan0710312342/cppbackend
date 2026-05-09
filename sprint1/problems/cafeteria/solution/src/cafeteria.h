@@ -115,7 +115,7 @@ public:
 
 private:
     net::io_context& io_;
-	int next_hotdog_id_ = 0;
+	std::atomic_int next_id_ = 0; 
     Store store_;
 
     std::shared_ptr<GasCooker> gas_cooker_ =
