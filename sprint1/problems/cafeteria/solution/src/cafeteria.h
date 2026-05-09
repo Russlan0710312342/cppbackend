@@ -69,8 +69,6 @@ public:
         sausage->StartFry(*gas_cooker_,
                           [sausage, state, check_ready]() {
 
-                              sausage->StopFry();   // фиксируем время
-
                               state->sausage_ready = true;
                               check_ready();
                           }
@@ -79,8 +77,6 @@ public:
         // 🥖 хлеб
         bread->StartBake(*gas_cooker_,
                          [bread, state, check_ready]() {
-
-                             bread->StopBaking();  // фиксируем время
 
                              state->bread_ready = true;
                              check_ready();
