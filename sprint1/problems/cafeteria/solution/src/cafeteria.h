@@ -51,7 +51,7 @@ public:
                 try {
 
                     HotDog hotdog(
-                        state->sausage->GetId(),
+                        ++next_hotdog_id_,
                         state->sausage,
                         state->bread);
 
@@ -115,7 +115,7 @@ public:
 
 private:
     net::io_context& io_;
-
+	int next_hotdog_id_ = 0;
     Store store_;
 
     std::shared_ptr<GasCooker> gas_cooker_ =
